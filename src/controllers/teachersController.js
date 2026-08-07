@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const bcrypt = require("bcryptjs");
 
 
 exports.getTeachers = async (req, res) => {
@@ -48,10 +49,15 @@ exports.create = async (req, res) => {
     const { name, email, phone, institute, location, subjects } = req.body;
     if (!name) return res.status(400).json({ success: false, message: "Name is required" });
 
+    const namePart = name.replace(/\s+/g, '').substring(0, 4);
+    const phonePart = (phone || "0000").replace(/\D/g, '').substring(0, 4).padEnd(4, '0');
+    const defaultPassword = `${namePart}${phonePart}`;
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
     const [result] = await db.query(
-      "INSERT INTO teachers (admin_id,name,email,phone,institute,location,subjects) VALUES (?,?,?,?,?,?,?)",
+      "INSERT INTO teachers (admin_id,name,email,phone,institute,location,subjects,password) VALUES (?,?,?,?,?,?,?,?)",
       [req.admin.id, name, email||null, phone||"", institute||"", location||"",
-       subjects ? JSON.stringify(subjects) : null]
+       subjects ? JSON.stringify(subjects) : null, hashedPassword]
     );
     res.status(201).json({ success: true, message: "Teacher created", id: result.insertId });
   } catch (err) {
