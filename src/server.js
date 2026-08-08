@@ -10,13 +10,17 @@ const app = express();
 
 /* ── Middleware ─────────────────────────────────────────── */
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "https://financereactjs.vercel.app",
+  origin: [
+    process.env.FRONTEND_URL || "https://financereactjs.vercel.app",
+    "https://dnyansagarclasses.com",
+    "https://www.dnyansagarclasses.com"
+  ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
- allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 }));
 
-app.options("https://financereactjs.vercel.app", cors()); // ✅ ADD THIS
+app.options("*", cors()); // ✅ ADD THIS TO HANDLE ALL PREFLIGHTS
 
 app.use(express.json());
 app.use(morgan("dev"));
