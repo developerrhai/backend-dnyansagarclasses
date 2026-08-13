@@ -46,13 +46,19 @@ exports.getOne = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { name, email, phone, institute, location, subjects } = req.body;
+    const { name, email, phone, institute, location, subjects, password } = req.body;
     if (!name) return res.status(400).json({ success: false, message: "Name is required" });
 
-    const namePart = name.replace(/\s+/g, '').substring(0, 4);
-    const phonePart = (phone || "0000").replace(/\D/g, '').substring(0, 4).padEnd(4, '0');
-    const defaultPassword = `${namePart}${phonePart}`;
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    let hashedPassword;
+    if (password && password.trim()) {
+      hashedPassword = await bcrypt.hash(password.trim(), 10);
+    } else {
+      const namePart = name.replace(/\s+/g, '').substring(0, 4);
+      const cleanPhone = (phone || "").replace(/\D/g, '');
+      const phonePart = cleanPhone ? cleanPhone.substring(0, 4).padEnd(4, '0') : "1234";
+      const defaultPassword = `${namePart}${phonePart}`;
+      hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    }
 
     const [result] = await db.query(
       "INSERT INTO teachers (admin_id,name,email,phone,institute,location,subjects,password) VALUES (?,?,?,?,?,?,?,?)",
@@ -67,13 +73,21 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const { name, email, phone, institute, location, subjects } = req.body;
-    const [result] = await db.query(
-      "UPDATE teachers SET name=?,email=?,phone=?,institute=?,location=?,subjects=? WHERE id=? AND admin_id=?",
-      [name, email||null, phone||"", institute||"", location||"",
-       subjects ? JSON.stringify(subjects) : null,
-       req.params.id, req.admin.id]
-    );
+    const { name, email, phone, institute, location, subjects, password } = req.body;
+    
+    let query = "UPDATE teachers SET name=?,email=?,phone=?,institute=?,location=?,subjects=?";
+    let params = [name, email||null, phone||"", institute||"", location||"", subjects ? JSON.stringify(subjects) : null];
+
+    if (password && password.trim()) {
+      const hashedPassword = await bcrypt.hash(password.trim(), 10);
+      query += ",password=?";
+      params.push(hashedPassword);
+    }
+
+    query += " WHERE id=? AND admin_id=?";
+    params.push(req.params.id, req.admin.id);
+
+    const [result] = await db.query(query, params);
     if (!result.affectedRows) return res.status(404).json({ success: false, message: "Teacher not found" });
     res.json({ success: true, message: "Teacher updated" });
   } catch (err) {

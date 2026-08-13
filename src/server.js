@@ -13,7 +13,8 @@ app.use(cors({
   origin: [
     process.env.FRONTEND_URL || "https://financereactjs.vercel.app",
     "https://dnyansagarclasses.com",
-    "https://www.dnyansagarclasses.com"
+    "https://www.dnyansagarclasses.com",
+    "https://dnyansagarclasses.vercel.app"
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],

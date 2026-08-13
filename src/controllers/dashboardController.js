@@ -71,7 +71,7 @@ exports.feeCollection = async (req, res) => {
          SUM(amount - paid_amount)   AS pending
        FROM invoices
        WHERE admin_id=? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-       GROUP BY YEAR(created_at), MONTH(created_at)
+       GROUP BY YEAR(created_at), MONTH(created_at), DATE_FORMAT(created_at,'%b')
        ORDER BY YEAR(created_at), MONTH(created_at)`,
       [req.admin.id]
     );
@@ -90,7 +90,7 @@ exports.financeOverview = async (req, res) => {
               SUM(paid_amount) AS income
        FROM invoices
        WHERE admin_id=? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-       GROUP BY y,m ORDER BY y,m`,
+       GROUP BY y, m, month ORDER BY y, m`,
       [req.admin.id]
     );
     // expense = payroll + expenses per month
@@ -99,7 +99,7 @@ exports.financeOverview = async (req, res) => {
               SUM(amount) AS expense
        FROM finance_records
        WHERE admin_id=? AND record_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-       GROUP BY y,m ORDER BY y,m`,
+       GROUP BY y, m, month ORDER BY y, m`,
       [req.admin.id]
     );
 
