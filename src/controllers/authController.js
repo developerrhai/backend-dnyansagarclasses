@@ -18,8 +18,8 @@ exports.signup = async (req, res) => {
     
     if (userRole === "admin") {
       const [result] = await db.query(
-        `INSERT INTO admins (name, email, password, role) VALUES (?, ?, ?, ?)`,
-        [name, email, hash, "admin"]
+        `INSERT INTO admins (name, email, password) VALUES (?, ?, ?)`,
+        [name, email, hash]
       );
       return res.status(201).json({
         success: true,
@@ -28,8 +28,8 @@ exports.signup = async (req, res) => {
       });
     } else {
       const [result] = await db.query(
-        `INSERT INTO teachers (admin_id, name, email, password, role) VALUES (?, ?, ?, ?, ?)`,
-        [1, name, email, hash, "teacher"]
+        `INSERT INTO teachers (admin_id, name, email, password) VALUES (?, ?, ?, ?)`,
+        [1, name, email, hash]
       );
       return res.status(201).json({
         success: true,

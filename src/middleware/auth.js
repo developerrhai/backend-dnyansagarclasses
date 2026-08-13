@@ -8,8 +8,9 @@ module.exports = function authMiddleware(req, res, next) {
 
   const token = header.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.admin = decoded;   // { id, email, name }
+    const secret = process.env.JWT_SECRET || "change_this_to_a_long_random_string";
+    const decoded = jwt.verify(token, secret);
+    req.admin = decoded;   // { id, email, name, role }
     next();
   } catch {
     return res.status(401).json({ success: false, message: "Invalid or expired token" });
