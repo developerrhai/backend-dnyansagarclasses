@@ -1,4 +1,6 @@
 const db = require("../config/db");
+const fs = require("fs");
+const path = require("path");
 
 /**
  * Dispatch message via RhaiTech WhatsApp API gateway (api.rhaitech.online)
@@ -112,6 +114,12 @@ exports.sendReport = async (req, res) => {
       waUrl: result.waUrl,
       data: { phone, studentName, marks, totalMarks },
     });
+  } catch (err) {
+    console.error("WhatsApp send-report error:", err);
+    res.status(500).json({ success: false, message: err.message || "Failed to process WhatsApp report" });
+  }
+};
+
 /* POST /api/whatsapp/upload-invoice */
 exports.uploadInvoice = async (req, res) => {
   try {
@@ -153,6 +161,3 @@ exports.uploadInvoice = async (req, res) => {
     res.status(500).json({ success: false, message: err.message || "Failed to upload invoice image" });
   }
 };
-
-
-
