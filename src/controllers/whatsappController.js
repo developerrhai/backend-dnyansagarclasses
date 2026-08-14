@@ -4,13 +4,12 @@ const path = require("path");
 
 /**
  * Dispatch message via RhaiTech WhatsApp API gateway (api.rhaitech.online)
- * Uses official appkey & authkey parameters specified by RhaiTech API docs.
+ * Uses official FormData request format with appkey, authkey, template_id, and file parameters.
  */
 async function dispatchWhatsAppMessage(phone, messageText, mediaUrl = null, options = {}) {
   const apiUrl = process.env.WHATSAPP_API_URL || "https://api.rhaitech.online/api/create-message";
   const appkey = process.env.WHATSAPP_APPKEY || "f67908d5-5aa9-49d9-8c56-9572272ea6d0";
   const authkey = process.env.WHATSAPP_AUTHKEY || "ppIYRYOlXVAd41QhiCDu6scku4jfJG0vTVBuLpsj395dXCT8wj";
-  const instanceId = process.env.WHATSAPP_INSTANCE_ID || "919772385268";
 
   // Clean phone number (strip spaces, symbols)
   let cleanedPhone = String(phone || "").replace(/\D/g, "");
@@ -21,38 +20,31 @@ async function dispatchWhatsAppMessage(phone, messageText, mediaUrl = null, opti
   const waUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodeURIComponent(messageText)}`;
 
   try {
-    const payload = {
-      appkey,
-      authkey,
-      to: cleanedPhone,
-      number: cleanedPhone,
-      message: messageText,
-      caption: messageText,
-      instance_id: instanceId,
-    };
+    const params = new URLSearchParams();
+    params.append("appkey", appkey);
+    params.append("authkey", authkey);
+    params.append("to", cleanedPhone);
+    params.append("template_id", options.template_id || process.env.WHATSAPP_TEMPLATE_ID || "payment_receipt");
+    params.append("language", options.language || "en_us");
 
     if (mediaUrl) {
-      payload.file = mediaUrl;
-      payload.media_url = mediaUrl;
-      payload.url = mediaUrl;
+      params.append("file", mediaUrl);
     }
 
-    if (options.template_id) {
-      payload.template_id = options.template_id;
-      payload.language = options.language || "en_us";
-      if (options.variables) payload.variables = options.variables;
+    if (options.variables && typeof options.variables === "object") {
+      for (const [key, val] of Object.entries(options.variables)) {
+        params.append(`variables[${key}]`, String(val));
+      }
+    } else {
+      params.append("variables[{variableKey1}]", options.studentName || "Student");
+      params.append("variables[{variableKey2}]", options.amountPaid || "0");
     }
 
-    console.log(`📤 Dispatching WhatsApp via RhaiTech API to ${cleanedPhone}:`, {
-      apiUrl,
-      hasAppKey: !!appkey,
-      hasFile: !!mediaUrl,
-    });
+    console.log(`📤 Dispatching WhatsApp via RhaiTech FormData API to ${cleanedPhone}...`);
 
     const response = await fetch(apiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: params,
     });
 
     const resJson = await response.json().catch(() => ({}));
@@ -60,9 +52,8 @@ async function dispatchWhatsAppMessage(phone, messageText, mediaUrl = null, opti
 
     const isSuccess =
       resJson.message_status === "Success" ||
-      resJson.status === true ||
-      resJson.success === true ||
-      resJson.status_code === 200;
+      resJson.status_code === 200 ||
+      resJson.status === "success";
 
     return {
       sentViaApi: isSuccess,
@@ -82,7 +73,7 @@ async function dispatchWhatsAppMessage(phone, messageText, mediaUrl = null, opti
 /* POST /api/whatsapp/send-invoice */
 exports.sendInvoice = async (req, res) => {
   try {
-    const { phone, studentName, amountPaid, balance, pdfUrl, imageUrl, message } = req.body;
+    const { phone, studentName, amountPaid, balance, pdfUrl, imageUrl, message, template_id } = req.body;
 
     let messageText = message;
     if (!messageText) {
@@ -90,7 +81,15 @@ exports.sendInvoice = async (req, res) => {
     }
 
     const targetMedia = imageUrl || pdfUrl || null;
-    const result = await dispatchWhatsAppMessage(phone, messageText, targetMedia);
+    const result = await dispatchWhatsAppMessage(phone, messageText, targetMedia, {
+      template_id: template_id || process.env.WHATSAPP_TEMPLATE_ID || "payment_receipt",
+      studentName,
+      amountPaid,
+      variables: {
+        "{variableKey1}": studentName || "Student",
+        "{variableKey2}": amountPaid || "0",
+      },
+    });
 
     res.json({
       success: true,
@@ -109,7 +108,7 @@ exports.sendInvoice = async (req, res) => {
 /* POST /api/whatsapp/send-report */
 exports.sendReport = async (req, res) => {
   try {
-    const { phone, studentName, className, examination, examDate, marks, totalMarks, performance, message, reportUrl } = req.body;
+    const { phone, studentName, className, examination, examDate, marks, totalMarks, performance, message, reportUrl, template_id } = req.body;
 
     let messageText = message;
     if (!messageText) {
@@ -117,7 +116,14 @@ exports.sendReport = async (req, res) => {
       messageText = `🎓 *DNYANSAGAR CLASSES - ACADEMIC REPORT CARD*\n\nDear Parent,\nHere is the latest test performance report for *${studentName || "Student"}*:\n\n📖 *Class/Batch:* ${className || "N/A"}\n📝 *Exam Name:* ${examination || "N/A"}\n📅 *Date:* ${examDate || "N/A"}\n📊 *Marks Scored:* ${marks} / ${totalMarks} (${percentage}%)\n📈 *Performance Rating:* ${performance || "Good"}\n\nThank you for your continuous support!\nRegards,\n*Dnyansagar Classes*`;
     }
 
-    const result = await dispatchWhatsAppMessage(phone, messageText, reportUrl || null);
+    const result = await dispatchWhatsAppMessage(phone, messageText, reportUrl || null, {
+      template_id: template_id || process.env.WHATSAPP_REPORT_TEMPLATE_ID || "marks_update",
+      studentName,
+      variables: {
+        "{variableKey1}": studentName || "Student",
+        "{variableKey2}": `${marks}/${totalMarks}`,
+      },
+    });
 
     res.json({
       success: true,
