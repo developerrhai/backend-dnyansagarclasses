@@ -75,12 +75,15 @@ exports.sendInvoice = async (req, res) => {
   try {
     const { phone, studentName, amountPaid, balance, pdfUrl, imageUrl, message, template_id } = req.body;
 
+    console.log(`📲 [Server Send Invoice] Target Phone: ${phone} | Student: ${studentName} | Paid: ₹${amountPaid} | Balance: ₹${balance}`);
+    const targetMedia = imageUrl || pdfUrl || null;
+    console.log(`🖼️ [Server Send Invoice] Target Media File URL: ${targetMedia}`);
+
     let messageText = message;
     if (!messageText) {
       messageText = `Greetings from *DNYANSAGAR CLASSES*,\n\nThank you for being a part of our institute. Please find the details of your fee payment below.\n\n📘 *Fee Payment Details*\n\n👨‍🎓 Student Name: ${studentName || ""}\n💰 Amount Paid: ₹${Number(amountPaid || 0).toLocaleString('en-IN')}\n📌 Balance: ₹${Number(balance || 0).toLocaleString('en-IN')}\n\n✅ Your payment has been received successfully.\n\nWe appreciate your trust in us and wish you success in your studies.\n\nRegards,\n*DNYANSAGAR CLASSES*`;
     }
 
-    const targetMedia = imageUrl || pdfUrl || null;
     const result = await dispatchWhatsAppMessage(phone, messageText, targetMedia, {
       template_id: template_id || process.env.WHATSAPP_TEMPLATE_ID || "payment_receipt",
       studentName,
@@ -144,6 +147,8 @@ exports.uploadInvoice = async (req, res) => {
   try {
     const { imageBase64, filename } = req.body;
 
+    console.log(`📥 [Server Upload] Received image upload request. Base64 size: ${imageBase64 ? imageBase64.length : 0} bytes`);
+
     const uploadsDir = path.join(__dirname, "../../public/uploads");
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
@@ -167,7 +172,8 @@ exports.uploadInvoice = async (req, res) => {
     const hostUrl = process.env.PUBLIC_URL || "https://dnyansagarclasses.rhaitech.online";
     const imageUrl = `${hostUrl}/uploads/${fileName}`;
 
-    console.log(`📸 Invoice image generated & saved: ${imageUrl}`);
+    console.log(`📸 [Server Upload] Saved file to disk: ${filePath}`);
+    console.log(`🔗 [Server Upload] Public Image URL: ${imageUrl}`);
 
     res.json({
       success: true,
