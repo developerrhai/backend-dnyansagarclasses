@@ -4,11 +4,12 @@ const path = require("path");
 
 /**
  * Dispatch message via RhaiTech WhatsApp API gateway (api.rhaitech.online)
- * Supports both text messages and media (Image / PDF document) attachments.
+ * Uses official appkey & authkey parameters specified by RhaiTech API docs.
  */
-async function dispatchWhatsAppMessage(phone, messageText, mediaUrl = null) {
-  const apiUrl = process.env.WHATSAPP_API_URL || "https://api.rhaitech.online/api/send";
-  const apiKey = process.env.WHATSAPP_API_KEY || "";
+async function dispatchWhatsAppMessage(phone, messageText, mediaUrl = null, options = {}) {
+  const apiUrl = process.env.WHATSAPP_API_URL || "https://api.rhaitech.online/api/create-message";
+  const appkey = process.env.WHATSAPP_APPKEY || "f67908d5-5aa9-49d9-8c56-9572272ea6d0";
+  const authkey = process.env.WHATSAPP_AUTHKEY || "ppIYRYOlXVAd41QhiCDu6scku4jfJG0vTVBuLpsj395dXCT8wj";
   const instanceId = process.env.WHATSAPP_INSTANCE_ID || "919772385268";
 
   // Clean phone number (strip spaces, symbols)
@@ -19,30 +20,34 @@ async function dispatchWhatsAppMessage(phone, messageText, mediaUrl = null) {
 
   const waUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodeURIComponent(messageText)}`;
 
-  if (!apiKey) {
-    console.log(`ℹ️ WHATSAPP_API_KEY not set in .env. Target (${cleanedPhone}): "${messageText.substring(0, 60)}..."`);
-    return {
-      sentViaApi: false,
-      message: "WhatsApp message generated. (Set WHATSAPP_API_KEY in .env for direct server dispatch)",
-      waUrl,
-    };
-  }
-
   try {
     const payload = {
+      appkey,
+      authkey,
+      to: cleanedPhone,
       number: cleanedPhone,
-      type: mediaUrl ? "media" : "text",
       message: messageText,
       caption: messageText,
       instance_id: instanceId,
-      access_token: apiKey,
-      api_key: apiKey,
     };
 
     if (mediaUrl) {
+      payload.file = mediaUrl;
       payload.media_url = mediaUrl;
       payload.url = mediaUrl;
     }
+
+    if (options.template_id) {
+      payload.template_id = options.template_id;
+      payload.language = options.language || "en_us";
+      if (options.variables) payload.variables = options.variables;
+    }
+
+    console.log(`📤 Dispatching WhatsApp via RhaiTech API to ${cleanedPhone}:`, {
+      apiUrl,
+      hasAppKey: !!appkey,
+      hasFile: !!mediaUrl,
+    });
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -53,8 +58,14 @@ async function dispatchWhatsAppMessage(phone, messageText, mediaUrl = null) {
     const resJson = await response.json().catch(() => ({}));
     console.log(`✅ RhaiTech WhatsApp API response for ${cleanedPhone}:`, resJson);
 
+    const isSuccess =
+      resJson.message_status === "Success" ||
+      resJson.status === true ||
+      resJson.success === true ||
+      resJson.status_code === 200;
+
     return {
-      sentViaApi: true,
+      sentViaApi: isSuccess,
       apiData: resJson,
       waUrl,
     };
@@ -85,6 +96,7 @@ exports.sendInvoice = async (req, res) => {
       success: true,
       message: "WhatsApp invoice notification processed successfully",
       sentViaApi: result.sentViaApi,
+      apiData: result.apiData,
       waUrl: result.waUrl,
       data: { phone, studentName, amountPaid, balance, pdfUrl, imageUrl },
     });
@@ -111,6 +123,7 @@ exports.sendReport = async (req, res) => {
       success: true,
       message: `WhatsApp report processed for ${studentName}`,
       sentViaApi: result.sentViaApi,
+      apiData: result.apiData,
       waUrl: result.waUrl,
       data: { phone, studentName, marks, totalMarks },
     });
