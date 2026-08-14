@@ -29,6 +29,9 @@ async function dispatchWhatsAppMessage(phone, messageText, mediaUrl = null, opti
 
     if (mediaUrl) {
       params.append("file", mediaUrl);
+      params.append("media_url", mediaUrl);
+      params.append("file_name", "invoice-payment-receipt.png");
+      params.append("type", "3");
     }
 
     if (options.variables && typeof options.variables === "object") {
