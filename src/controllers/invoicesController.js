@@ -157,13 +157,16 @@ exports.remove = async (req, res) => {
 /* GET /api/invoices/summary – totals for summary cards */
 exports.summary = async (req, res) => {
   try {
+    const aid = req.admin.id;
     const [rows] = await db.query(
       `SELECT
-         COALESCE(SUM(amount), 0) AS total_invoiced,
-         COALESCE(SUM(paid_amount), 0) AS total_paid,
-         COALESCE(SUM(GREATEST(0, amount - paid_amount)), 0) AS total_pending
-       FROM invoices WHERE admin_id = ?`,
-      [req.admin.id]
+         COALESCE((SELECT SUM(fee) FROM students WHERE admin_id = ?), 0) AS total_invoiced,
+         COALESCE((SELECT SUM(paid_amount) FROM invoices WHERE admin_id = ?), 0) AS total_paid,
+         COALESCE(GREATEST(0, 
+           COALESCE((SELECT SUM(fee) FROM students WHERE admin_id = ?), 0) - 
+           COALESCE((SELECT SUM(paid_amount) FROM invoices WHERE admin_id = ?), 0)
+         ), 0) AS total_pending`,
+      [aid, aid, aid, aid]
     );
     res.json({ success: true, data: rows[0] });
   } catch (err) {
