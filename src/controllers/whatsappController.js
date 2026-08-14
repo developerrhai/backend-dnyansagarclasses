@@ -38,6 +38,9 @@ async function dispatchWhatsAppMessage(phone, messageText, mediaUrl = null, opti
         params.append(`variables[${key}]`, String(val));
       }
     } else {
+      params.append("variables[{1}]", options.studentName || "Student");
+      params.append("variables[{2}]", options.amountPaid || "0");
+      params.append("variables[{3}]", options.balance || "0");
       params.append("variables[{variableKey1}]", options.studentName || "Student");
       params.append("variables[{variableKey2}]", options.amountPaid || "0");
       params.append("variables[{variableKey3}]", options.balance || "0");
@@ -87,16 +90,22 @@ exports.sendInvoice = async (req, res) => {
       messageText = `Greetings from *DNYANSAGAR CLASSES*,\n\nThank you for being a part of our institute. Please find the details of your fee payment below.\n\n📘 *Fee Payment Details*\n\n👨‍🎓 Student Name: ${studentName || ""}\n💰 Amount Paid: ₹${Number(amountPaid || 0).toLocaleString('en-IN')}\n📌 Balance: ₹${Number(balance || 0).toLocaleString('en-IN')}\n\n✅ Your payment has been received successfully.\n\nWe appreciate your trust in us and wish you success in your studies.\n\nRegards,\n*DNYANSAGAR CLASSES*`;
     }
 
+    const formattedPaid = Number(amountPaid || 0).toLocaleString('en-IN');
+    const formattedBalance = Number(balance || 0).toLocaleString('en-IN');
+
     const result = await dispatchWhatsAppMessage(phone, messageText, targetMedia, {
       template_id: template_id || process.env.WHATSAPP_TEMPLATE_ID || "recipt",
       language: process.env.WHATSAPP_LANGUAGE || "en",
       studentName,
-      amountPaid,
-      balance,
+      amountPaid: formattedPaid,
+      balance: formattedBalance,
       variables: {
+        "{1}": studentName || "Student",
+        "{2}": formattedPaid,
+        "{3}": formattedBalance,
         "{variableKey1}": studentName || "Student",
-        "{variableKey2}": Number(amountPaid || 0).toLocaleString('en-IN'),
-        "{variableKey3}": Number(balance || 0).toLocaleString('en-IN'),
+        "{variableKey2}": formattedPaid,
+        "{variableKey3}": formattedBalance,
       },
     });
 
@@ -126,12 +135,12 @@ exports.sendReport = async (req, res) => {
     }
 
     const result = await dispatchWhatsAppMessage(phone, messageText, reportUrl || null, {
-      template_id: template_id || process.env.WHATSAPP_REPORT_TEMPLATE_ID || "9th_2026_27",
+      template_id: template_id || process.env.WHATSAPP_REPORT_TEMPLATE_ID || "9th_std",
       language: process.env.WHATSAPP_LANGUAGE || "en",
       studentName,
       variables: {
-        "{variableKey1}": studentName || "Student",
-        "{variableKey2}": `${marks}/${totalMarks}`,
+        "{1}": studentName || "Student",
+        "{2}": `${marks}/${totalMarks}`,
       },
     });
 
