@@ -58,6 +58,7 @@ app.use("/api/boards",  require("./routes/boards"));
 app.use("/api/branches",  require("./routes/branchRoute"));
 app.use("/api/assign-teacher",  require("./routes/teacherAssignRoute"));
 app.use("/api/admin",     require("./routes/scheduleRoute"));
+app.use("/api/whatsapp",  require("./routes/whatsapp"));
 
 
 /* ── Health check ───────────────────────────────────────── */
