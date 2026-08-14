@@ -73,7 +73,7 @@ exports.sendInvoice = async (req, res) => {
 
     let messageText = message;
     if (!messageText) {
-      messageText = `📚 *Dnyansagar Classes - Payment Receipt*\n\nDear Parent/Student,\nThank you for making a payment for *${studentName || "Student"}*.\n\n💰 *Amount Paid:* ₹${Number(amountPaid || 0).toLocaleString('en-IN')}\n💳 *Remaining Balance:* ₹${Number(balance || 0).toLocaleString('en-IN')}\n\n📄 *Download Tax Invoice PDF:*\n${pdfUrl || "https://dnyansagarclasses.rhaitech.online"}\n\nRegards,\n*Dnyansagar Classes*`;
+      messageText = `Greetings from *DNYANSAGAR CLASSES*,\n\nThank you for being a part of our institute. Please find the details of your fee payment below.\n\n📘 *Fee Payment Details*\n\n👨‍🎓 Student Name: ${studentName || ""}\n💰 Amount Paid: ₹${Number(amountPaid || 0).toLocaleString('en-IN')}\n📌 Balance: ₹${Number(balance || 0).toLocaleString('en-IN')}\n\n✅ Your payment has been received successfully.\n\nWe appreciate your trust in us and wish you success in your studies.\n\nRegards,\n*DNYANSAGAR CLASSES*`;
     }
 
     const targetMedia = imageUrl || pdfUrl || null;
