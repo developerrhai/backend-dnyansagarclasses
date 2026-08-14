@@ -124,6 +124,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   paid_amount  DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   due_date     DATE          DEFAULT NULL,
   status       ENUM('Paid','Partial','Pending','Overdue') NOT NULL DEFAULT 'Pending',
+  description  VARCHAR(500)  DEFAULT '',
   student_phone VARCHAR(25)  DEFAULT '',
   created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -188,7 +189,7 @@ CREATE TABLE IF NOT EXISTS standards (
   batch_id INT UNSIGNED NOT NULL,
   name VARCHAR(50) NOT NULL,
   CONSTRAINT fk_std_board FOREIGN KEY (board_id) REFERENCES boards(board_id),
-  CONSTRAINT fk_std_batch FOREIGN KEY (batch_id) REFERENCES batches(batch_id),
+  CONSTRAINT fk_std_batch FOREIGN KEY (batch_id) REFERENCES batches(batch_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Subjects
