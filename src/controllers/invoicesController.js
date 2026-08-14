@@ -27,13 +27,19 @@ function parseDate(d) {
 exports.getAll = async (req, res) => {
   try {
     const { status } = req.query;
-    let sql = "SELECT * FROM invoices WHERE admin_id = ?";
+    let sql = `
+      SELECT i.*, 
+             COALESCE(NULLIF(i.student_phone, ''), s.phone, '') AS student_phone
+      FROM invoices i
+      LEFT JOIN students s ON i.student_id = s.id
+      WHERE i.admin_id = ?
+    `;
     const params = [req.admin.id];
     if (status && status !== "all") { 
-      sql += " AND status = ?"; 
+      sql += " AND i.status = ?"; 
       params.push(status); 
     }
-    sql += " ORDER BY created_at DESC";
+    sql += " ORDER BY i.created_at DESC";
     const [rows] = await db.query(sql, params);
     res.json({ success: true, data: rows });
   } catch (err) {
@@ -44,7 +50,11 @@ exports.getAll = async (req, res) => {
 exports.getOne = async (req, res) => {
   try {
     const [rows] = await db.query(
-      "SELECT * FROM invoices WHERE id = ? AND admin_id = ?",
+      `SELECT i.*, 
+              COALESCE(NULLIF(i.student_phone, ''), s.phone, '') AS student_phone
+       FROM invoices i
+       LEFT JOIN students s ON i.student_id = s.id
+       WHERE i.id = ? AND i.admin_id = ?`,
       [req.params.id, req.admin.id]
     );
     if (!rows.length) return res.status(404).json({ success: false, message: "Invoice not found" });
@@ -56,7 +66,7 @@ exports.getOne = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { student_name, student_id, amount, paid_amount, due_date, description, install_date, transaction_type } = req.body;
+    const { student_name, student_id, student_phone, amount, paid_amount, due_date, description, install_date, transaction_type } = req.body;
     if (!student_name || amount === undefined || amount === null || amount === "")
       return res.status(400).json({ success: false, message: "Student name and amount are required" });
 
@@ -69,12 +79,13 @@ exports.create = async (req, res) => {
     const status = computeStatus(total, paid, cleanDueDate);
 
     const [result] = await db.query(
-      `INSERT INTO invoices (admin_id, student_id, student_name, amount, paid_amount, due_date, status, description, install_date, transaction_type)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO invoices (admin_id, student_id, student_name, student_phone, amount, paid_amount, due_date, status, description, install_date, transaction_type)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
       [
         req.admin.id, 
         student_id ? parseInt(student_id) || null : null, 
         student_name.trim(), 
+        student_phone ? String(student_phone).trim() : "",
         total, 
         paid, 
         cleanDueDate, 
@@ -92,7 +103,7 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const { student_name, student_id, amount, paid_amount, due_date, install_date, transaction_type, description } = req.body;
+    const { student_name, student_id, student_phone, amount, paid_amount, due_date, install_date, transaction_type, description } = req.body;
     if (!student_name || amount === undefined || amount === null || amount === "")
       return res.status(400).json({ success: false, message: "Student name and amount are required" });
 
@@ -106,11 +117,12 @@ exports.update = async (req, res) => {
 
     const [result] = await db.query(
       `UPDATE invoices
-       SET student_name=?, student_id=?, amount=?, paid_amount=?, due_date=?, status=?, description=?, install_date=?, transaction_type=? 
+       SET student_name=?, student_id=?, student_phone=?, amount=?, paid_amount=?, due_date=?, status=?, description=?, install_date=?, transaction_type=? 
        WHERE id=? AND admin_id=?`,
       [
         student_name.trim(), 
         student_id ? parseInt(student_id) || null : null, 
+        student_phone ? String(student_phone).trim() : "",
         total, 
         paid, 
         cleanDueDate, 
@@ -149,7 +161,7 @@ exports.summary = async (req, res) => {
       `SELECT
          COALESCE(SUM(amount), 0) AS total_invoiced,
          COALESCE(SUM(paid_amount), 0) AS total_paid,
-         COALESCE(SUM(amount - paid_amount), 0) AS total_pending
+         COALESCE(SUM(GREATEST(0, amount - paid_amount)), 0) AS total_pending
        FROM invoices WHERE admin_id = ?`,
       [req.admin.id]
     );

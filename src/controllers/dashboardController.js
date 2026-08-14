@@ -67,8 +67,8 @@ exports.feeCollection = async (req, res) => {
     const [rows] = await db.query(
       `SELECT
          DATE_FORMAT(created_at,'%b') AS month,
-         SUM(paid_amount)            AS collected,
-         SUM(amount - paid_amount)   AS pending
+         SUM(paid_amount)                      AS collected,
+         SUM(GREATEST(0, amount - paid_amount)) AS pending
        FROM invoices
        WHERE admin_id=? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
        GROUP BY YEAR(created_at), MONTH(created_at), DATE_FORMAT(created_at,'%b')

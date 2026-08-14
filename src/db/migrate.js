@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   paid_amount  DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   due_date     DATE          DEFAULT NULL,
   status       ENUM('Paid','Partial','Pending','Overdue') NOT NULL DEFAULT 'Pending',
-  description  VARCHAR(500)  DEFAULT '',
+  student_phone VARCHAR(25)  DEFAULT '',
   created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (admin_id)   REFERENCES admins(id)   ON DELETE CASCADE,
@@ -145,7 +145,6 @@ CREATE TABLE IF NOT EXISTS finance_records (
   created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-`;
 
 -- ─────────────────────────────────────────────────────────
 -- 8. branches
@@ -255,6 +254,13 @@ async function migrate() {
   // Run all CREATE TABLE statements
   await conn.query(DDL);
   console.log("✅ All tables created (or already existed)");
+
+  try {
+    await conn.query("ALTER TABLE invoices ADD COLUMN student_phone VARCHAR(25) DEFAULT ''");
+    console.log("✅ Added student_phone column to invoices table");
+  } catch (e) {
+    // Column already exists or table structure is current
+  }
 
   await conn.end();
   console.log("\n🎉 Migration complete!\n");
