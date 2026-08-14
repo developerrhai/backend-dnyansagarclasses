@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
 const c = require("../controllers/invoicesController");
+router.get("/public/:id/pdf", c.getPdf); // Public PDF view endpoint
 router.get("/summary", auth, c.summary);   // must be before /:id
 router.get("/",        auth, c.getAll);
 router.get("/:id",     auth, c.getOne);
