@@ -27,6 +27,10 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(morgan("dev"));
 
+/* ── Serve Uploaded Invoice Images ──────────────────────── */
+app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
+
+
 /* ── Routes ─────────────────────────────────────────────── */
 
 

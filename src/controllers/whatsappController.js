@@ -112,10 +112,47 @@ exports.sendReport = async (req, res) => {
       waUrl: result.waUrl,
       data: { phone, studentName, marks, totalMarks },
     });
+/* POST /api/whatsapp/upload-invoice */
+exports.uploadInvoice = async (req, res) => {
+  try {
+    const { imageBase64, filename } = req.body;
+
+    const uploadsDir = path.join(__dirname, "../../public/uploads");
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    let fileName = filename || `invoice-${Date.now()}-${Math.floor(Math.random() * 1000)}.png`;
+    if (!fileName.endsWith(".png") && !fileName.endsWith(".jpg") && !fileName.endsWith(".jpeg")) {
+      fileName += ".png";
+    }
+
+    const filePath = path.join(uploadsDir, fileName);
+
+    if (imageBase64) {
+      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+      fs.writeFileSync(filePath, buffer);
+    } else {
+      return res.status(400).json({ success: false, message: "No image data provided" });
+    }
+
+    const hostUrl = process.env.PUBLIC_URL || "https://dnyansagarclasses.rhaitech.online";
+    const imageUrl = `${hostUrl}/uploads/${fileName}`;
+
+    console.log(`📸 Invoice image generated & saved: ${imageUrl}`);
+
+    res.json({
+      success: true,
+      message: "Invoice image uploaded successfully",
+      url: imageUrl,
+      fileName,
+    });
   } catch (err) {
-    console.error("WhatsApp send-report error:", err);
-    res.status(500).json({ success: false, message: err.message || "Failed to process WhatsApp report" });
+    console.error("Upload invoice error:", err);
+    res.status(500).json({ success: false, message: err.message || "Failed to upload invoice image" });
   }
 };
+
 
 
