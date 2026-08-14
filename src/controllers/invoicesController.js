@@ -174,7 +174,23 @@ exports.summary = async (req, res) => {
   }
 };
 
-/* GET /api/invoices/public/:id/pdf – Public Printable Tax Invoice PDF View */
+function numberToWords(num) {
+  const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const n = parseInt(num);
+  if (isNaN(n) || n === 0) return 'Zero Rupees only';
+  const val = n.toString().padStart(9, '0').match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!val) return `${n.toLocaleString()} Rupees only`;
+  let str = '';
+  str += (val[1] != 0) ? (a[Number(val[1])] || (b[val[1][0]] + ' ' + a[val[1][1]])) + 'Crore ' : '';
+  str += (val[2] != 0) ? (a[Number(val[2])] || (b[val[2][0]] + ' ' + a[val[2][1]])) + 'Lakh ' : '';
+  str += (val[3] != 0) ? (a[Number(val[3])] || (b[val[3][0]] + ' ' + a[val[3][1]])) + 'Thousand ' : '';
+  str += (val[4] != 0) ? (a[Number(val[4])] || (b[val[4][0]] + ' ' + a[val[4][1]])) + 'Hundred ' : '';
+  str += (val[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(val[5])] || (b[val[5][0]] + ' ' + a[val[5][1]])) : '';
+  return (str.trim() + ' Rupees only').replace(/\s+/g, ' ');
+}
+
+/* GET /api/invoices/public/:id/pdf – Public Printable Payment Receipt / PDF View */
 exports.getPdf = async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -192,116 +208,95 @@ exports.getPdf = async (req, res) => {
     const amount = Number(inv.amount || 0);
     const paid = Number(inv.paid_amount || 0);
     const balance = Math.max(0, amount - paid);
-    const fmtDate = (d) => d ? new Date(d).toLocaleDateString() : "—";
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB") : "—";
+    const amountInWords = numberToWords(paid);
 
     const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Tax Invoice #${inv.id} - Dnyansagar Classes</title>
+  <title>Payment Receipt #${inv.id} - Dnyansagar Classes</title>
   <style>
-    @page { size: A4; margin: 20mm; }
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; margin: 0; padding: 20px; background: #f8fafc; }
-    .container { max-width: 800px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 35px; border-radius: 8px; background: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1f7fa6; padding-bottom: 15px; }
-    .institute h2 { margin: 0; color: #1f7fa6; font-size: 24px; text-transform: uppercase; letter-spacing: 0.5px; }
+    @page { size: A4; margin: 15mm; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #2d3748; margin: 0; padding: 20px; background: #f8fafc; }
+    .container { max-width: 794px; margin: 0 auto; background: #fff; padding: 40px; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1f7fa6; padding-bottom: 12px; }
+    .institute h2 { margin: 0; color: #1f7fa6; font-size: 22px; font-weight: bold; letter-spacing: 0.5px; }
     .institute p { margin: 3px 0; font-size: 13px; color: #4a5568; }
-    .title { text-align: center; color: #1f7fa6; font-size: 22px; font-weight: bold; margin: 20px 0 10px 0; letter-spacing: 1px; }
-    .details-grid { display: flex; justify-content: space-between; margin-top: 15px; background: #f7fafc; padding: 15px; border-radius: 6px; border: 1px solid #edf2f7; }
-    .details-grid p { margin: 4px 0; font-size: 14px; }
-    .table { width: 100%; border-collapse: collapse; margin-top: 25px; }
-    .table th { background: #1f7fa6; color: #fff; padding: 10px 12px; text-align: left; font-size: 14px; }
-    .table td { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
-    .table td:last-child, .table th:last-child { text-align: right; }
-    .summary-box { margin-top: 25px; display: flex; justify-content: flex-end; }
-    .summary-table { width: 320px; border-collapse: collapse; }
-    .summary-table td { padding: 8px 12px; font-size: 14px; }
-    .summary-table tr.total-row { background: #e6fffa; font-weight: bold; font-size: 16px; border-top: 2px solid #319795; }
-    .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
-    .badge-paid { background: #c6f6d5; color: #22543d; }
-    .badge-partial { background: #feebc8; color: #744210; }
-    .badge-pending { background: #e2e8f0; color: #2d3748; }
-    .footer { margin-top: 40px; display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #edf2f7; padding-top: 20px; }
-    .signature { text-align: right; }
-    .auth { font-weight: bold; margin-top: 5px; color: #2d3748; font-size: 13px; }
+    .logo { height: 60px; max-width: 140px; object-fit: contain; }
+    .title { text-align: center; color: #1f7fa6; font-size: 22px; font-weight: bold; margin: 25px 0 20px 0; }
+    .top-details { display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 14px; line-height: 1.6; }
+    .left-info p, .right-info p { margin: 4px 0; }
+    .right-info { text-align: right; }
+    .right-info h4 { margin: 0 0 6px 0; font-size: 15px; color: #2d3748; }
+    .receipt-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+    .receipt-table td { padding: 10px 0; color: #2d3748; }
+    .receipt-table td:last-child { text-align: right; font-weight: bold; }
+    .receipt-table tr.total-border td { border-top: 1px solid #718096; font-weight: bold; }
+    .footer { margin-top: 60px; text-align: right; font-size: 14px; }
+    .footer .auth { font-weight: bold; margin-top: 40px; color: #1a202c; }
     @media print {
       body { padding: 0; background: #fff; }
-      .container { border: none; box-shadow: none; padding: 0; }
+      .container { border: none; box-shadow: none; padding: 0; width: 100%; }
       .no-print { display: none; }
     }
   </style>
 </head>
 <body>
-  <div class="no-print" style="text-align: right; max-width: 800px; margin: 0 auto 15px auto;">
-    <button onclick="window.print()" style="background: #1f7fa6; color: #fff; border: none; padding: 10px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 14px;">🖨️ Save as PDF / Print</button>
+  <div class="no-print" style="text-align: right; max-width: 794px; margin: 0 auto 15px auto;">
+    <button onclick="window.print()" style="background: #1f7fa6; color: #fff; border: none; padding: 10px 22px; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🖨️ Save as PDF / Print</button>
   </div>
   <div class="container">
     <div class="header">
       <div class="institute">
-        <h2>Dnyansagar Classes</h2>
+        <h2>DNYANSAGAR CLASSES</h2>
         <p>201/A, New Excelsior Building Opp. Crown Hotel, KHADKI Pune - 411003</p>
-        <p>Phone: 8862010906 | State: Maharashtra</p>
+        <p>Phone no : 8862010906</p>
+        <p>State: Maharashtra</p>
       </div>
     </div>
-    <div class="title">TAX INVOICE</div>
-    <div class="details-grid">
-      <div>
-        <p><b>STUDENT DETAILS:</b></p>
-        <p><b>Name:</b> ${inv.student_name}</p>
-        <p><b>Student ID:</b> ${inv.student_id || "—"}</p>
-        <p><b>Phone:</b> ${inv.student_phone || "—"}</p>
+
+    <div class="title">Payment Receipt</div>
+
+    <div class="top-details">
+      <div class="left-info">
+        <p><b>Received From</b></p>
+        <p style="text-transform: lowercase;">${inv.student_name}</p>
+        <p><b>Contact No :</b> ${inv.student_phone || "—"}</p>
+        <p style="margin-top: 12px;"><b>Amount in words</b></p>
+        <p>${amountInWords}</p>
       </div>
-      <div style="text-align: right;">
-        <p><b>INVOICE DETAILS:</b></p>
-        <p><b>Invoice No:</b> #INV${String(inv.id).padStart(3, '0')}</p>
-        <p><b>Date:</b> ${fmtDate(inv.install_date || inv.created_at)}</p>
-        <p><b>Due Date:</b> ${fmtDate(inv.due_date)}</p>
-        <p><b>Status:</b> <span class="badge ${balance === 0 ? 'badge-paid' : (paid > 0 ? 'badge-partial' : 'badge-pending')}">${inv.status || (balance === 0 ? 'Paid' : 'Pending')}</span></p>
+      <div class="right-info">
+        <h4>Receipt Details</h4>
+        <p><b>Receipt No :</b> ${inv.id}</p>
+        <p><b>Date :</b> ${fmtDate(inv.install_date || inv.created_at)}</p>
       </div>
     </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Description</th>
-          <th>Transaction Type</th>
-          <th>Total Amount</th>
-          <th>Paid Amount</th>
-        </tr>
-      </thead>
+
+    <table class="receipt-table">
       <tbody>
         <tr>
-          <td>${inv.description || "Tuition Fee"}</td>
+          <td>Received</td>
+          <td>₹ ${paid.toLocaleString('en-IN')}</td>
+        </tr>
+        <tr>
+          <td>Payment mode</td>
           <td>${inv.transaction_type || "Cash"}</td>
-          <td>₹${amount.toLocaleString()}</td>
-          <td>₹${paid.toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td>Previous Balance</td>
+          <td>₹ ${amount.toLocaleString('en-IN')}</td>
+        </tr>
+        <tr class="total-border">
+          <td>Current Balance</td>
+          <td>₹ ${balance.toLocaleString('en-IN')}</td>
         </tr>
       </tbody>
     </table>
-    <div class="summary-box">
-      <table class="summary-table">
-        <tr>
-          <td>Total Amount:</td>
-          <td style="text-align: right;">₹${amount.toLocaleString()}</td>
-        </tr>
-        <tr>
-          <td>Amount Paid:</td>
-          <td style="text-align: right;">₹${paid.toLocaleString()}</td>
-        </tr>
-        <tr class="total-row">
-          <td>Remaining Balance:</td>
-          <td style="text-align: right;">₹${balance.toLocaleString()}</td>
-        </tr>
-      </table>
-    </div>
+
     <div class="footer">
-      <div>
-        <p style="font-size: 12px; color: #718096; margin: 0;">Thank you for choosing Dnyansagar Classes.</p>
-        <p style="font-size: 11px; color: #a0aec0; margin-top: 4px;">Computer-generated tax invoice.</p>
-      </div>
-      <div class="signature">
-        <p style="font-size: 13px; font-weight: bold; margin-bottom: 30px;">For Dnyansagar Classes</p>
-        <div class="auth">Authorized Signatory</div>
-      </div>
+      <div>For : DNYANSAGAR CLASSES</div>
+      <div class="auth">Authorized Signatory</div>
     </div>
   </div>
   <script>
