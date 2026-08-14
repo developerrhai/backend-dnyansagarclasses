@@ -24,13 +24,12 @@ async function dispatchWhatsAppMessage(phone, messageText, mediaUrl = null, opti
     params.append("appkey", appkey);
     params.append("authkey", authkey);
     params.append("to", cleanedPhone);
-    params.append("template_id", options.template_id || process.env.WHATSAPP_TEMPLATE_ID || "payment_receipt");
-    params.append("language", options.language || "en_us");
+    params.append("template_id", options.template_id || process.env.WHATSAPP_TEMPLATE_ID || "recipt");
+    params.append("language", options.language || process.env.WHATSAPP_LANGUAGE || "en");
 
     if (mediaUrl) {
       params.append("file", mediaUrl);
-      params.append("media_url", mediaUrl);
-      params.append("file_name", "invoice-payment-receipt.png");
+      params.append("file_name", "receipt.png");
       params.append("type", "3");
     }
 
@@ -41,9 +40,10 @@ async function dispatchWhatsAppMessage(phone, messageText, mediaUrl = null, opti
     } else {
       params.append("variables[{variableKey1}]", options.studentName || "Student");
       params.append("variables[{variableKey2}]", options.amountPaid || "0");
+      params.append("variables[{variableKey3}]", options.balance || "0");
     }
 
-    console.log(`📤 Dispatching WhatsApp via RhaiTech FormData API to ${cleanedPhone}...`);
+    console.log(`📤 Dispatching WhatsApp via RhaiTech FormData API to ${cleanedPhone} (Template: ${options.template_id || "recipt"})...`);
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -88,12 +88,15 @@ exports.sendInvoice = async (req, res) => {
     }
 
     const result = await dispatchWhatsAppMessage(phone, messageText, targetMedia, {
-      template_id: template_id || process.env.WHATSAPP_TEMPLATE_ID || "payment_receipt",
+      template_id: template_id || process.env.WHATSAPP_TEMPLATE_ID || "recipt",
+      language: process.env.WHATSAPP_LANGUAGE || "en",
       studentName,
       amountPaid,
+      balance,
       variables: {
         "{variableKey1}": studentName || "Student",
-        "{variableKey2}": amountPaid || "0",
+        "{variableKey2}": Number(amountPaid || 0).toLocaleString('en-IN'),
+        "{variableKey3}": Number(balance || 0).toLocaleString('en-IN'),
       },
     });
 
@@ -123,7 +126,8 @@ exports.sendReport = async (req, res) => {
     }
 
     const result = await dispatchWhatsAppMessage(phone, messageText, reportUrl || null, {
-      template_id: template_id || process.env.WHATSAPP_REPORT_TEMPLATE_ID || "marks_update",
+      template_id: template_id || process.env.WHATSAPP_REPORT_TEMPLATE_ID || "9th_2026_27",
+      language: process.env.WHATSAPP_LANGUAGE || "en",
       studentName,
       variables: {
         "{variableKey1}": studentName || "Student",
